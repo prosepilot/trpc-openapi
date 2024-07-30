@@ -129,7 +129,7 @@ export const createOpenApiNodeHttpHandler = <
       const caller = router.createCaller(ctx);
 
       const segments = procedure.path.split('.');
-      const procedureFn = segments.reduce((acc, curr) => acc[curr], caller as any) as AnyProcedure;
+      const procedureFn = segments.reduce((acc, curr) => acc[curr], caller) as AnyProcedure;
 
       data = await procedureFn(input);
 
@@ -165,7 +165,7 @@ export const createOpenApiNodeHttpHandler = <
         errors: [error],
       });
 
-      const errorShape = router.getErrorShape({
+      const errorShape = router._def.getErrorShape({
         error,
         type: procedure?.type ?? 'unknown',
         path: procedure?.path,
