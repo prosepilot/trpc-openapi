@@ -1,8 +1,11 @@
 {
-  "name": "trpc-openapi",
-  "version": "1.2.0",
+  "name": "better-trpc-openapi",
+  "version": "0.1.0",
   "description": "tRPC OpenAPI",
-  "author": "James Berry <jb@jamesbe.com>",
+  "authors": [
+    "James Berry <jb@jamesbe.com>",
+    "DongYoon Kang <kdy.1997.dev@gmail.com>"
+  ],
   "private": false,
   "license": "MIT",
   "keywords": [
