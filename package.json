@@ -29,7 +29,7 @@
     "build": "rimraf dist && tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@trpc/server": "^10.0.0",
+    "@trpc/server": "^11.0.0-rc.467",
     "zod": "^3.14.4"
   },
   "dependencies": {
@@ -42,7 +42,8 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",
-    "@trpc/client": "^10.27.1",
+    "@trpc/client": "^11.0.0-rc.467",
+    "@trpc/server": "^11.0.0-rc.467",
     "@types/aws-lambda": "^8.10.115",
     "@types/co-body": "^6.1.0",
     "@types/express": "^4.17.17",
