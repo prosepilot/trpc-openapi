@@ -24,15 +24,14 @@
     "examples/with-express",
     "examples/with-interop",
     "examples/with-serverless",
-    "examples/with-fastify",
-    "examples/with-nuxtjs"
+    "examples/with-fastify"
   ],
   "scripts": {
     "test": "tsc --noEmit && jest --verbose",
     "build": "rimraf dist && tsc -p tsconfig.build.json"
   },
   "peerDependencies": {
-    "@trpc/server": "^11.0.0-rc.467",
+    "@trpc/server": "^11.0.0-rc.502",
     "zod": "^3.14.4"
   },
   "dependencies": {
@@ -45,8 +44,8 @@
   },
   "devDependencies": {
     "@trivago/prettier-plugin-sort-imports": "^4.1.1",
-    "@trpc/client": "^11.0.0-rc.467",
-    "@trpc/server": "^11.0.0-rc.467",
+    "@trpc/client": "^11.0.0-rc.502",
+    "@trpc/server": "^11.0.0-rc.502",
     "@types/aws-lambda": "^8.10.115",
     "@types/co-body": "^6.1.0",
     "@types/express": "^4.17.17",

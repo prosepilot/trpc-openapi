@@ -140,9 +140,6 @@ export const createOpenApiAwsLambdaHandler = <
         ctx: undefined,
       });
 
-      console.log(error)
-      console.log(meta?.status)
-
       const statusCode = meta?.status ?? TRPC_ERROR_CODE_HTTP_STATUS[error.code] ?? 500;
       const headers = { 'content-type': 'application/json', ...(meta?.headers ?? {}) };
       const body: OpenApiErrorResponse = {

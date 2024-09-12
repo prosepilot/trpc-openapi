@@ -8,7 +8,7 @@
   "dependencies": {
     "@fastify/cors": "^8.2.1",
     "@fastify/swagger": "^8.5.1",
-    "@trpc/server": "^10.27.1",
+    "@trpc/server": "^11.0.0-rc.502",
     "fastify": "^4.17.0",
     "jsonwebtoken": "^9.0.0",
     "uuid": "^9.0.0",
