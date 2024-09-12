@@ -1,4 +1,5 @@
 import { AnyProcedure, getErrorShape, TRPCError } from '@trpc/server';
+import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import {
   NodeHTTPHandlerOptions,
   NodeHTTPRequest,
@@ -25,11 +26,12 @@ import {
   unwrapZodType,
   zodSupportsCoerce,
 } from '../../utils/zod';
-import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './errors';
+import { getErrorFromUnknown } from './errors';
 import { getBody, getQuery } from './input';
 import { createProcedureCache } from './procedures';
 import { HTTPHeaders } from '@trpc/client';
 import { TRPCRequestInfo } from '@trpc/server/dist/unstable-core-do-not-import/http/types';
+
 
 export type CreateOpenApiNodeHttpHandlerOptions<
   TRouter extends OpenApiRouter,
@@ -214,7 +216,7 @@ export const createOpenApiNodeHttpHandler = <
         error.cause instanceof Error &&
         error.cause.name === 'ZodError';
 
-      const statusCode = meta?.status ?? TRPC_ERROR_CODE_HTTP_STATUS[error.code] ?? 500;
+      const statusCode = meta?.status ?? getHTTPStatusCodeFromError(error) ?? 500;
       const headers = meta?.headers ?? {};
       const body: OpenApiErrorResponse = {
         message: isInputValidationError

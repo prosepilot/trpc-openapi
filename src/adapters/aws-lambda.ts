@@ -4,11 +4,12 @@ import { EventEmitter } from 'events';
 import type { RequestMethod } from 'node-mocks-http';
 import { createRequest, createResponse } from 'node-mocks-http';
 import { getErrorShape, TRPCError } from '@trpc/server';
+import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import { LambdaEvent } from '@trpc/server/dist/adapters/aws-lambda/getPlanner';
 
 import type { CreateOpenApiAwsLambdaHandlerOptions, OpenApiErrorResponse, OpenApiRouter } from '../types';
 import { createOpenApiNodeHttpHandler } from './node-http/core';
-import { TRPC_ERROR_CODE_HTTP_STATUS, getErrorFromUnknown } from './node-http/errors';
+import { getErrorFromUnknown } from './node-http/errors';
 import { TRPCRequestInfo } from '@trpc/server/dist/unstable-core-do-not-import/http/types';
 
 // Assume payload format is determined by inspecting version directly in the event
@@ -140,7 +141,7 @@ export const createOpenApiAwsLambdaHandler = <
         ctx: undefined,
       });
 
-      const statusCode = meta?.status ?? TRPC_ERROR_CODE_HTTP_STATUS[error.code] ?? 500;
+      const statusCode = meta?.status ?? getHTTPStatusCodeFromError(error) ?? 500;
       const headers = { 'content-type': 'application/json', ...(meta?.headers ?? {}) };
       const body: OpenApiErrorResponse = {
         message: errorShape?.message ?? error.message ?? 'An error occurred',

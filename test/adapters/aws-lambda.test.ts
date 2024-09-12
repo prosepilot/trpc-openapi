@@ -1,4 +1,5 @@
-import { initTRPC } from '@trpc/server';
+import { initTRPC, TRPCError } from '@trpc/server';
+import { getHTTPStatusCodeFromError } from '@trpc/server/http';
 import {
   CreateAWSLambdaContextOptions,
 } from '@trpc/server/adapters/aws-lambda';
@@ -11,7 +12,6 @@ import {
   mockAPIGatewayProxyEventV1,
   mockAPIGatewayProxyEventV2,
 } from './aws-lambda.utils';
-import { TRPC_ERROR_CODE_HTTP_STATUS } from '../../src/adapters/node-http/errors';
 
 const createContextV1 = ({ event }: CreateAWSLambdaContextOptions<APIGatewayProxyEvent>) => {
   return { user: event.headers['X-USER'] };
@@ -47,6 +47,19 @@ const createRouter = (createContext: (obj: any) => { user?: string }) => {
       .mutation(({ input, ctx }) => ({
         greeting: `Hello ${ctx.user ?? input.name}`,
       })),
+    throwUnauthorized: t.procedure
+      .meta({ openapi: { path: '/unauthorized', method: 'GET' } })
+      .input(z.object({ name: z.string().optional() }))
+      .output(z.object({ greeting: z.string() }))
+      .query(
+        ({ input, ctx }) => {
+          if(input.name === "Steve"){
+            throw new TRPCError({ code: "UNAUTHORIZED" })
+          }
+
+        return { greeting: `Hello ${ctx.user ?? input.name ?? 'world'}` }
+        }
+      ),
   })
 };
 
@@ -204,7 +217,7 @@ describe('v1', () => {
     );
     const body = JSON.parse(rawBody);
 
-    expect(statusCode).toBe(TRPC_ERROR_CODE_HTTP_STATUS.BAD_REQUEST);
+    expect(statusCode).toBe(getHTTPStatusCodeFromError(new TRPCError({ code: "BAD_REQUEST"})));
     expect(headers).toEqual({
       'content-type': 'application/json',
     });
@@ -273,6 +286,35 @@ describe('v1', () => {
       message: "Unsupported payload format version: asdf",
       code: 'INTERNAL_SERVER_ERROR',
     });
+  });
+
+  test('UNAUTHORIZED Error', async () => {
+    const {
+      statusCode,
+      headers,
+      body: rawBody,
+    } = await handler(
+      mockAPIGatewayProxyEventV1({
+        body: '',
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'GET',
+        path: 'unauthorized',
+        queryStringParameters: {
+          name: 'Steve',
+        },
+        resource: '/hello',
+      }),
+      ctx,
+    );
+    const body = JSON.parse(rawBody);
+
+    expect(statusCode).toBe(getHTTPStatusCodeFromError(new TRPCError({ code: "UNAUTHORIZED"})));
+    expect(headers).toEqual({
+      'content-type': 'application/json',
+    });
+    expect(body).toEqual({"message":"UNAUTHORIZED","code":"UNAUTHORIZED"});
   });
 });
 
@@ -424,7 +466,7 @@ describe('v2', () => {
     );
     const body = JSON.parse(rawBody);
 
-    expect(statusCode).toBe(TRPC_ERROR_CODE_HTTP_STATUS.BAD_REQUEST);
+    expect(statusCode).toBe(getHTTPStatusCodeFromError(new TRPCError({ code: "BAD_REQUEST"})));
     expect(headers).toEqual({
       'content-type': 'application/json',
     });
@@ -493,5 +535,34 @@ describe('v2', () => {
       message: "Unsupported payload format version: asdf",
       code: 'INTERNAL_SERVER_ERROR',
     });
+  });
+
+  test('UNAUTHORIZED Error', async () => {
+    const {
+      statusCode,
+      headers,
+      body: rawBody,
+    } = await handler(
+      mockAPIGatewayProxyEventV2({
+        body: '',
+        headers: {
+          'content-type': 'application/json',
+        },
+        method: 'GET',
+        path: 'unauthorized',
+        queryStringParameters: {
+          name: 'Steve',
+        },
+        routeKey: '$default',
+      }),
+      ctx,
+    );
+    const body = JSON.parse(rawBody);
+
+    expect(statusCode).toBe(getHTTPStatusCodeFromError(new TRPCError({ code: "UNAUTHORIZED"})));
+    expect(headers).toEqual({
+      'content-type': 'application/json',
+    });
+    expect(body).toEqual({"message":"UNAUTHORIZED","code":"UNAUTHORIZED"});
   });
 });
