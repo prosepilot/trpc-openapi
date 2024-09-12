@@ -22,11 +22,13 @@ export const createProcedureCache = (router: OpenApiRouter) => {
     }
     const path = normalizePath(openapi.path);
     const pathRegExp = getPathRegExp(path);
-    procedureCache.get(method)!.set(pathRegExp, {
-      type: procedure._def.type,
-      path: queryPath,
-      procedure,
-    });
+    if(procedure._def.type === "mutation" || procedure._def.type === "query" ){
+      procedureCache.get(method)!.set(pathRegExp, {
+        type: procedure._def.type,
+        path: queryPath,
+        procedure,
+      });
+    }
   });
 
   return (method: OpenApiMethod, path: string) => {

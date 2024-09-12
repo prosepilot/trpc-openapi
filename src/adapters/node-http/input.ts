@@ -17,8 +17,8 @@ export const getQuery = (req: NodeHTTPRequest, url: URL): Record<string, string>
   }
 
   // normalize first value in array
-  Object.keys(req.query).forEach((key) => {
-    const value = req.query[key];
+  Object.keys(req.query ?? {}).forEach((key) => {
+    const value = (req.query as Record<string, string[]> | Record<string, string>)[key];
     if (value) {
       if (typeof value === 'string') {
         query[key] = value;

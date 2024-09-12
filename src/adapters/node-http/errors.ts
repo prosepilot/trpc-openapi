@@ -10,35 +10,24 @@ export const TRPC_ERROR_CODE_HTTP_STATUS: Record<TRPCError['code'], number> = {
   TIMEOUT: 408,
   CONFLICT: 409,
   CLIENT_CLOSED_REQUEST: 499,
+  NOT_IMPLEMENTED: 501,
+  BAD_GATEWAY: 502,
+  SERVICE_UNAVAILABLE: 503,
+  GATEWAY_TIMEOUT: 504,
+  UNSUPPORTED_MEDIA_TYPE: 415,
+  METHOD_NOT_SUPPORTED: 405,
   PRECONDITION_FAILED: 412,
   PAYLOAD_TOO_LARGE: 413,
-  METHOD_NOT_SUPPORTED: 405,
-  TOO_MANY_REQUESTS: 429,
   UNPROCESSABLE_CONTENT: 422,
+  TOO_MANY_REQUESTS: 429
 };
 
-export function getErrorFromUnknown(cause: unknown): TRPCError {
-  if (cause instanceof Error && cause.name === 'TRPCError') {
-    return cause as TRPCError;
+export const getErrorFromUnknown = (error: unknown): TRPCError => {
+  if (error instanceof TRPCError) {
+    return error;
   }
-
-  let errorCause: Error | undefined = undefined;
-  let stack: string | undefined = undefined;
-
-  if (cause instanceof Error) {
-    errorCause = cause;
-    stack = cause.stack;
-  }
-
-  const error = new TRPCError({
-    message: 'Internal server error',
+  return new TRPCError({
     code: 'INTERNAL_SERVER_ERROR',
-    cause: errorCause,
+    message: error instanceof Error ? error.message : 'Unknown error occurred',
   });
-
-  if (stack) {
-    error.stack = stack;
-  }
-
-  return error;
-}
+};

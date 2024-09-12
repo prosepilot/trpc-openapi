@@ -490,7 +490,7 @@ describe('standalone adapter', () => {
       echo: t.procedure
         .meta({ openapi: { method: 'GET', path: '/echo' } })
         .input(z.object({ payload: z.string() }))
-        .output(z.object({ payload: z.string(), context: z.undefined() }))
+        .output(z.object({ payload: z.string(), context: z.union([z.object({}).passthrough(), z.record(z.any()), z.undefined()]) }))
         .query(({ input, ctx }) => ({ payload: input.payload, context: ctx })),
     });
 

@@ -1,7 +1,6 @@
-import { inferAsyncReturnType, initTRPC } from '@trpc/server';
+import { initTRPC } from '@trpc/server';
 import {
   CreateAWSLambdaContextOptions,
-  UNKNOWN_PAYLOAD_FORMAT_VERSION_ERROR_MESSAGE,
 } from '@trpc/server/adapters/aws-lambda';
 import { APIGatewayProxyEvent, APIGatewayProxyEventV2 } from 'aws-lambda';
 import z from 'zod';
@@ -12,17 +11,24 @@ import {
   mockAPIGatewayProxyEventV1,
   mockAPIGatewayProxyEventV2,
 } from './aws-lambda.utils';
+import { TRPC_ERROR_CODE_HTTP_STATUS } from '../../src/adapters/node-http/errors';
 
 const createContextV1 = ({ event }: CreateAWSLambdaContextOptions<APIGatewayProxyEvent>) => {
   return { user: event.headers['X-USER'] };
 };
 const createContextV2 = ({ event }: CreateAWSLambdaContextOptions<APIGatewayProxyEventV2>) => {
-  return { user: event.headers['X-USER'] };
+  return { 
+    version: event.version, 
+    routeKey: event.routeKey, 
+    rawPath: event.rawPath, 
+    rawQueryString: event.rawPath,
+    user: event.headers['X-USER'] 
+  };
 };
 
 const createRouter = (createContext: (obj: any) => { user?: string }) => {
   const t = initTRPC
-    .context<inferAsyncReturnType<typeof createContext>>()
+    .context<Awaited<ReturnType<typeof createContext>>>()
     .meta<OpenApiMeta>()
     .create();
 
@@ -41,7 +47,7 @@ const createRouter = (createContext: (obj: any) => { user?: string }) => {
       .mutation(({ input, ctx }) => ({
         greeting: `Hello ${ctx.user ?? input.name}`,
       })),
-  });
+  })
 };
 
 const ctx = mockAPIGatewayContext();
@@ -116,11 +122,7 @@ describe('v1', () => {
   });
 
   test('with url encoded body input', async () => {
-    const {
-      statusCode,
-      headers,
-      body: rawBody,
-    } = await handler(
+    const response = await handler(
       mockAPIGatewayProxyEventV1({
         body: 'name=Aphex',
         headers: {
@@ -133,6 +135,14 @@ describe('v1', () => {
       }),
       ctx,
     );
+
+    console.log(response);
+
+    const {
+      statusCode,
+      headers,
+      body: rawBody,
+    } = response;
     const body = JSON.parse(rawBody);
 
     expect(statusCode).toBe(200);
@@ -194,7 +204,7 @@ describe('v1', () => {
     );
     const body = JSON.parse(rawBody);
 
-    expect(statusCode).toBe(400);
+    expect(statusCode).toBe(TRPC_ERROR_CODE_HTTP_STATUS.BAD_REQUEST);
     expect(headers).toEqual({
       'content-type': 'application/json',
     });
@@ -260,16 +270,16 @@ describe('v1', () => {
       'content-type': 'application/json',
     });
     expect(body).toEqual({
-      message: UNKNOWN_PAYLOAD_FORMAT_VERSION_ERROR_MESSAGE,
+      message: "Unsupported payload format version: asdf",
       code: 'INTERNAL_SERVER_ERROR',
     });
   });
 });
 
 describe('v2', () => {
-  const router = createRouter(createContextV2);
+  const routerV2 = createRouter(createContextV2); // Ensure correct typing for OpenApiRouter
   const handler = createOpenApiAwsLambdaHandler({
-    router,
+    router: routerV2,
     createContext: createContextV2,
   });
 
@@ -414,7 +424,7 @@ describe('v2', () => {
     );
     const body = JSON.parse(rawBody);
 
-    expect(statusCode).toBe(400);
+    expect(statusCode).toBe(TRPC_ERROR_CODE_HTTP_STATUS.BAD_REQUEST);
     expect(headers).toEqual({
       'content-type': 'application/json',
     });
@@ -480,7 +490,7 @@ describe('v2', () => {
       'content-type': 'application/json',
     });
     expect(body).toEqual({
-      message: UNKNOWN_PAYLOAD_FORMAT_VERSION_ERROR_MESSAGE,
+      message: "Unsupported payload format version: asdf",
       code: 'INTERNAL_SERVER_ERROR',
     });
   });
