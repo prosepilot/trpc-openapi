@@ -60,6 +60,13 @@ const createRouter = (createContext: (obj: any) => { user?: string }) => {
         return { greeting: `Hello ${ctx.user ?? input.name ?? 'world'}` }
         }
       ),
+    getHelloArray: t.procedure
+      .meta({ openapi: { path: '/array', method: 'POST' } })
+      .input(z.array(z.string().optional()))
+      .output(z.object({ greeting: z.string() }))
+      .query(({ input, ctx }) => ({
+        greeting: `Hello ${`[${input.join(", ")}]`}`,
+      })),
   })
 };
 
@@ -131,6 +138,40 @@ describe('v1', () => {
     });
     expect(body).toEqual({
       greeting: 'Hello Aphex',
+    });
+  });
+
+  test('with array input', async () => {
+    const {
+      statusCode,
+      headers,
+      body: rawBody,
+    } = await handler(
+      mockAPIGatewayProxyEventV1({
+        body: JSON.stringify([
+          "Steve",
+          "Mary"
+        ]),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        method: 'POST',
+        path: 'array',
+        queryStringParameters: {},
+        resource: '/array',
+      }),
+      ctx,
+    );
+    const body = JSON.parse(rawBody);
+
+    console.log(rawBody)
+
+    expect(statusCode).toBe(200);
+    expect(headers).toEqual({
+      'content-type': 'application/json',
+    });
+    expect(body).toEqual({
+      greeting: 'Hello [Steve, Mary]',
     });
   });
 

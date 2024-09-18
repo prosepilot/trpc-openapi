@@ -20,6 +20,7 @@ import { acceptsRequestBody } from '../../utils/method';
 import { normalizePath } from '../../utils/path';
 import { getInputOutputParsers } from '../../utils/procedure';
 import {
+  instanceofZodTypeArray,
   instanceofZodTypeCoercible,
   instanceofZodTypeLikeVoid,
   instanceofZodTypeObject,
@@ -127,20 +128,42 @@ export const createOpenApiNodeHttpHandler = <
       const unwrappedSchema = unwrapZodType(schema, true);
 
       if (!instanceofZodTypeLikeVoid(unwrappedSchema)) {
-        input = {
-          ...(useBody ? await getBody(req, maxBodySize) : getQuery(req, url)),
-          ...pathInput,
-        };
+        const bodyOrQuery = useBody ? await getBody(req, maxBodySize) : getQuery(req, url);
+      
+        if (instanceofZodTypeArray(unwrappedSchema)) {
+          // Input schema is an array
+          if (!Array.isArray(bodyOrQuery)) {
+            throw new TRPCError({
+              code: 'BAD_REQUEST',
+              message: 'Expected array in request body',
+            });
+          }
+          input = bodyOrQuery;
+        } else {
+          // Input schema is an object or other type
+          input = {
+            ...bodyOrQuery,
+            ...pathInput,
+          };
+        }
       }
 
       if (zodSupportsCoerce) {
         if (instanceofZodTypeObject(unwrappedSchema)) {
-          Object.values(unwrappedSchema.shape).forEach((shapeSchema) => {
+          const shapeSchemas = Object.values(unwrappedSchema.shape);
+          shapeSchemas.forEach((shapeSchema) => {
             const unwrappedShapeSchema = unwrapZodType(shapeSchema, false);
             if (instanceofZodTypeCoercible(unwrappedShapeSchema)) {
               unwrappedShapeSchema._def.coerce = true;
             }
           });
+        } else if (instanceofZodTypeArray(unwrappedSchema)) {
+          // Handle coercion for array items
+          const itemSchema = unwrappedSchema._def.type;
+          const unwrappedItemSchema = unwrapZodType(itemSchema, false);
+          if (instanceofZodTypeCoercible(unwrappedItemSchema)) {
+            unwrappedItemSchema._def.coerce = true;
+          }
         }
       }
 

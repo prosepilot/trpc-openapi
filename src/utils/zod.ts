@@ -21,6 +21,9 @@ export const instanceofZodTypeObject = (type: z.ZodTypeAny): type is z.ZodObject
   return instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodObject);
 };
 
+export const instanceofZodTypeArray = (type: z.ZodTypeAny): type is z.ZodArray<z.ZodTypeAny> => {
+  return instanceofZodTypeKind(type, z.ZodFirstPartyTypeKind.ZodArray);
+};
 export type ZodTypeLikeVoid = z.ZodVoid | z.ZodUndefined | z.ZodNever;
 
 export const instanceofZodTypeLikeVoid = (type: z.ZodTypeAny): type is ZodTypeLikeVoid => {

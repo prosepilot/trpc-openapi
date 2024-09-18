@@ -125,7 +125,7 @@ A procedure can accept a set of inputs via URL path parameters. You can add a pa
 
 ### Query parameters
 
-Query & path parameter inputs are always accepted as a `string`. This library will attempt to [coerce](https://github.com/colinhacks/zod#coercion-for-primitives) your input values to the following primitive types out of the box: `number`, `boolean`, `bigint` and `date`. If you wish to support others such as `object`, `array` etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
+Query & path parameter inputs are always accepted as a `string`. This library will attempt to [coerce](https://github.com/colinhacks/zod#coercion-for-primitives) your input `array` and `object` values to the following primitive types out of the box: `number`, `boolean`, `bigint` and `date`. If you wish to support others (such as nested `object`, `array`) etc. please use [`z.preprocess()`](https://github.com/colinhacks/zod#preprocess).
 
 ```typescript
 // Router

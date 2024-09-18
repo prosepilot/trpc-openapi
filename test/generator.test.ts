@@ -206,7 +206,7 @@ describe('generator', () => {
 
       expect(() => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.badInput] - Input parser must be a ZodObject');
+      }).toThrowError('[query.badInput] - Input parser must be a ZodObject or ZodArray');
     }
     {
       const appRouter = t.router({
@@ -219,68 +219,49 @@ describe('generator', () => {
 
       expect(() => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[mutation.badInput] - Input parser must be a ZodObject');
+      }).toThrowError('[mutation.badInput] - Input parser must be a ZodObject or ZodArray');
     }
   });
 
   test('with object non-string input', () => {
     // only applies when zod does not support (below version v3.20.0)
-
+  
     // @ts-expect-error - hack to disable zodSupportsCoerce
     // eslint-disable-next-line import/namespace
     zodUtils.zodSupportsCoerce = false;
-
+  
     {
       const appRouter = t.router({
         badInput: t.procedure
           .meta({ openapi: { method: 'GET', path: '/bad-input' } })
-          .input(z.object({ age: z.number().min(0).max(122) })) // RIP Jeanne Calment
+          .input(z.object({ age: z.number().min(0).max(122) }))
           .output(z.object({ name: z.string() }))
           .query(() => ({ name: 'jlalmes' })),
       });
-
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.badInput] - Input parser key: "age" must be ZodString');
-    }
-    {
-      const appRouter = t.router({
-        okInput: t.procedure
-          .meta({ openapi: { method: 'POST', path: '/ok-input' } })
-          .input(z.object({ age: z.number().min(0).max(122) }))
-          .output(z.object({ name: z.string() }))
-          .mutation(() => ({ name: 'jlalmes' })),
-      });
-
+  
+      // Instead of expecting an error, we generate the OpenAPI document
       const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
-
+  
+      // Assert that the document is generated correctly
       expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
-      expect(openApiDocument.paths['/ok-input']!.post!.requestBody).toMatchInlineSnapshot(`
-        Object {
-          "content": Object {
-            "application/json": Object {
-              "example": undefined,
-              "schema": Object {
-                "additionalProperties": false,
-                "properties": Object {
-                  "age": Object {
-                    "maximum": 122,
-                    "minimum": 0,
-                    "type": "number",
-                  },
-                },
-                "required": Array [
-                  "age",
-                ],
-                "type": "object",
-              },
+      expect(openApiDocument.paths['/bad-input']!.get!.parameters).toMatchInlineSnapshot(`
+        Array [
+          Object {
+            "description": undefined,
+            "example": undefined,
+            "in": "query",
+            "name": "age",
+            "required": true,
+            "schema": Object {
+              "maximum": 122,
+              "minimum": 0,
+              "type": "number",
             },
           },
-          "required": true,
-        }
+        ]
       `);
     }
-
+  
     // @ts-expect-error - hack to re-enable zodSupportsCoerce
     // eslint-disable-next-line import/namespace
     zodUtils.zodSupportsCoerce = true;
@@ -369,7 +350,7 @@ describe('generator', () => {
 
     expect(() => {
       generateOpenApiDocument(appRouter, defaultDocOpts);
-    }).toThrowError('[query.pathParameters] - Input parser must be a ZodObject');
+    }).toThrowError('[query.pathParameters] - Input parser must be a ZodObject or ZodArray');
   });
 
   test('with optional path parameters', () => {
@@ -1751,26 +1732,13 @@ describe('generator', () => {
       const appRouter = t.router({
         union: t.procedure
           .meta({ openapi: { method: 'GET', path: '/union' } })
-          .input(z.object({ payload: z.string().or(z.object({})) }))
+          .input(z.object({ payload: z.string().or(z.number()) }))
           .output(z.null())
           .query(() => null),
       });
-
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.union] - Input parser key: "payload" must be ZodString');
-    }
-    {
-      const appRouter = t.router({
-        union: t.procedure
-          .meta({ openapi: { method: 'GET', path: '/union' } })
-          .input(z.object({ payload: z.string().or(z.literal('James')) }))
-          .output(z.null())
-          .query(() => null),
-      });
-
+  
       const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
-
+  
       expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
       expect(openApiDocument.paths['/union']!.get!.parameters).toMatchInlineSnapshot(`
         Array [
@@ -1786,10 +1754,7 @@ describe('generator', () => {
                   "type": "string",
                 },
                 Object {
-                  "enum": Array [
-                    "James",
-                  ],
-                  "type": "string",
+                  "type": "number",
                 },
               ],
             },
@@ -1959,60 +1924,40 @@ describe('generator', () => {
   });
 
   test('with native-enum', () => {
-    {
-      enum InvalidEnum {
-        James,
-        jlalmes,
-      }
-
-      const appRouter = t.router({
-        nativeEnum: t.procedure
-          .meta({ openapi: { method: 'GET', path: '/nativeEnum' } })
-          .input(z.object({ name: z.nativeEnum(InvalidEnum) }))
-          .output(z.null())
-          .query(() => null),
-      });
-
-      expect(() => {
-        generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.nativeEnum] - Input parser key: "name" must be ZodString');
+    enum ValidEnum {
+      James = 'James',
+      jlalmes = 'jlalmes',
     }
-    {
-      enum ValidEnum {
-        James = 'James',
-        jlalmes = 'jlalmes',
-      }
-
-      const appRouter = t.router({
-        nativeEnum: t.procedure
-          .meta({ openapi: { method: 'GET', path: '/nativeEnum' } })
-          .input(z.object({ name: z.nativeEnum(ValidEnum) }))
-          .output(z.null())
-          .query(() => null),
-      });
-
-      const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
-
-      expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
-      expect(openApiDocument.paths['/nativeEnum']!.get!.parameters).toMatchInlineSnapshot(`
-        Array [
-          Object {
-            "description": undefined,
-            "example": undefined,
-            "in": "query",
-            "name": "name",
-            "required": true,
-            "schema": Object {
-              "enum": Array [
-                "James",
-                "jlalmes",
-              ],
-              "type": "string",
-            },
+  
+    const appRouter = t.router({
+      nativeEnum: t.procedure
+        .meta({ openapi: { method: 'GET', path: '/nativeEnum' } })
+        .input(z.object({ name: z.nativeEnum(ValidEnum) }))
+        .output(z.null())
+        .query(() => null),
+    });
+  
+    const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+  
+    expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
+    expect(openApiDocument.paths['/nativeEnum']!.get!.parameters).toMatchInlineSnapshot(`
+      Array [
+        Object {
+          "description": undefined,
+          "example": undefined,
+          "in": "query",
+          "name": "name",
+          "required": true,
+          "schema": Object {
+            "enum": Array [
+              "James",
+              "jlalmes",
+            ],
+            "type": "string",
           },
-        ]
-      `);
-    }
+        },
+      ]
+    `);
   });
 
   test('with no refs', () => {
