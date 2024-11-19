@@ -10,10 +10,10 @@
   },
   "devDependencies": {
     "@types/node": "^20.2.3",
-    "nuxt": "^3.5.1"
+    "nuxt": "^3.13.1"
   },
   "dependencies": {
-    "@trpc/server": "^10.27.1",
-    "trpc-nuxt": "^0.10.3"
+    "@trpc/server": "^11.0.0-rc.502",
+    "trpc-nuxt": "^0.11.0-beta.1"
   }
 }

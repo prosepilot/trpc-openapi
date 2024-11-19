@@ -12,7 +12,7 @@ export const getOpenApiPathsObject = (
   securitySchemeNames: string[],
 ): OpenAPIV3.PathsObject => {
   const pathsObject: OpenAPIV3.PathsObject = {};
-  const procedures = appRouter._def.procedures as OpenApiProcedureRecord;
+  const procedures = (appRouter as any)._def.procedures as OpenApiProcedureRecord; // TODO: BUG: This type isn't quite right...
 
   forEachOpenApiProcedure(procedures, ({ path: procedurePath, type, procedure, openapi }) => {
     const procedureName = `${type}.${procedurePath}`;

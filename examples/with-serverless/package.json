@@ -6,7 +6,7 @@
     "dev": "rimraf .build && serverless offline"
   },
   "dependencies": {
-    "@trpc/server": "^10.27.1",
+    "@trpc/server": "^11.0.0-rc.502",
     "zod": "^3.21.4"
   },
   "devDependencies": {

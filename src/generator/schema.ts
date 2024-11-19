@@ -6,6 +6,7 @@ import zodToJsonSchema from 'zod-to-json-schema';
 import { OpenApiContentType } from '../types';
 import {
   instanceofZodType,
+  instanceofZodTypeArray,
   instanceofZodTypeCoercible,
   instanceofZodTypeLikeString,
   instanceofZodTypeLikeVoid,
@@ -25,6 +26,7 @@ export const getParameterObjects = (
   pathParameters: string[],
   inType: 'all' | 'path' | 'query',
   example: Record<string, any> | undefined,
+  arrayParameterName: string = "parameter", // Optional parameter name for arrays
 ): OpenAPIV3.ParameterObject[] | undefined => {
   if (!instanceofZodType(schema)) {
     throw new TRPCError({
@@ -34,83 +36,111 @@ export const getParameterObjects = (
   }
 
   const isRequired = !schema.isOptional();
-  const unwrappedSchema = unwrapZodType(schema, true);
+  let unwrappedSchema = unwrapZodType(schema, true);
 
   if (pathParameters.length === 0 && instanceofZodTypeLikeVoid(unwrappedSchema)) {
     return undefined;
   }
 
-  if (!instanceofZodTypeObject(unwrappedSchema)) {
-    throw new TRPCError({
-      message: 'Input parser must be a ZodObject',
-      code: 'INTERNAL_SERVER_ERROR',
-    });
-  }
+  if (instanceofZodTypeObject(unwrappedSchema)) {
+    const shape = unwrappedSchema.shape;
 
-  const shape = unwrappedSchema.shape;
-  const shapeKeys = Object.keys(shape);
+    const shapeKeys = Object.keys(shape);
 
-  for (const pathParameter of pathParameters) {
-    if (!shapeKeys.includes(pathParameter)) {
-      throw new TRPCError({
-        message: `Input parser expects key from path: "${pathParameter}"`,
-        code: 'INTERNAL_SERVER_ERROR',
-      });
-    }
-  }
-
-  return shapeKeys
-    .filter((shapeKey) => {
-      const isPathParameter = pathParameters.includes(shapeKey);
-      if (inType === 'path') {
-        return isPathParameter;
-      } else if (inType === 'query') {
-        return !isPathParameter;
+    for (const pathParameter of pathParameters) {
+      if (!shapeKeys.includes(pathParameter)) {
+        throw new TRPCError({
+          message: `Input parser expects key from path: "${pathParameter}"`,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
       }
-      return true;
-    })
-    .map((shapeKey) => {
-      let shapeSchema = shape[shapeKey]!;
-      const isShapeRequired = !shapeSchema.isOptional();
-      const isPathParameter = pathParameters.includes(shapeKey);
+    }
 
-      if (!instanceofZodTypeLikeString(shapeSchema)) {
-        if (zodSupportsCoerce) {
-          if (!instanceofZodTypeCoercible(shapeSchema)) {
+    return shapeKeys
+      .filter((shapeKey) => {
+        const isPathParameter = pathParameters.includes(shapeKey);
+        if (inType === 'path') {
+          return isPathParameter;
+        } else if (inType === 'query') {
+          return !isPathParameter;
+        }
+        return true;
+      })
+      .map((shapeKey) => {
+        let shapeSchema = shape[shapeKey]!;
+        const isShapeRequired = !shapeSchema.isOptional();
+        const isPathParameter = pathParameters.includes(shapeKey);
+
+        if (instanceofZodTypeOptional(shapeSchema)) {
+          if (isPathParameter) {
             throw new TRPCError({
-              message: `Input parser key: "${shapeKey}" must be ZodString, ZodNumber, ZodBoolean, ZodBigInt or ZodDate`,
+              message: `Path parameter: "${shapeKey}" must not be optional`,
               code: 'INTERNAL_SERVER_ERROR',
             });
           }
-        } else {
-          throw new TRPCError({
-            message: `Input parser key: "${shapeKey}" must be ZodString`,
-            code: 'INTERNAL_SERVER_ERROR',
-          });
+          shapeSchema = shapeSchema.unwrap();
         }
+
+        const { description, ...openApiSchemaObject } = zodSchemaToOpenApiSchemaObject(shapeSchema);
+
+        return {
+          name: shapeKey,
+          in: isPathParameter ? 'path' : 'query',
+          required: isPathParameter || (isRequired && isShapeRequired),
+          schema: openApiSchemaObject,
+          description: description,
+          example: example?.[shapeKey],
+        };
+      });
+  } else if (instanceofZodTypeArray(unwrappedSchema)) {
+    if (!arrayParameterName) {
+      throw new TRPCError({
+        message: 'Array parameter name must be provided for array schemas',
+        code: 'INTERNAL_SERVER_ERROR',
+      });
+    }
+
+    const isPathParameter = pathParameters.includes(arrayParameterName);
+    const parameterIn = isPathParameter ? 'path' : 'query';
+
+    if (isPathParameter && inType !== 'path') {
+      // Skip if we're not processing path parameters
+      return undefined;
+    } else if (!isPathParameter && inType !== 'query') {
+      // Skip if we're not processing query parameters
+      return undefined;
+    }
+
+    if (instanceofZodTypeOptional(unwrappedSchema)) {
+      if (isPathParameter) {
+        throw new TRPCError({
+          message: `Path parameter: "${arrayParameterName}" must not be optional`,
+          code: 'INTERNAL_SERVER_ERROR',
+        });
       }
+      unwrappedSchema = unwrappedSchema.unwrap();
+    }
 
-      if (instanceofZodTypeOptional(shapeSchema)) {
-        if (isPathParameter) {
-          throw new TRPCError({
-            message: `Path parameter: "${shapeKey}" must not be optional`,
-            code: 'INTERNAL_SERVER_ERROR',
-          });
-        }
-        shapeSchema = shapeSchema.unwrap();
-      }
+    const { description, ...openApiSchemaObject } = zodSchemaToOpenApiSchemaObject(unwrappedSchema);
 
-      const { description, ...openApiSchemaObject } = zodSchemaToOpenApiSchemaObject(shapeSchema);
-
-      return {
-        name: shapeKey,
-        in: isPathParameter ? 'path' : 'query',
-        required: isPathParameter || (isRequired && isShapeRequired),
+    return [
+      {
+        name: arrayParameterName,
+        in: parameterIn,
+        required: isPathParameter || isRequired,
         schema: openApiSchemaObject,
         description: description,
-        example: example?.[shapeKey],
-      };
+        example: example?.[arrayParameterName],
+        style: 'form',
+        explode: true,
+      },
+    ];
+  } else {
+    throw new TRPCError({
+      message: 'Input parser must be a ZodObject or ZodArray',
+      code: 'INTERNAL_SERVER_ERROR',
     });
+  }
 };
 
 export const getRequestBodyObject = (
@@ -133,27 +163,91 @@ export const getRequestBodyObject = (
     return undefined;
   }
 
-  if (!instanceofZodTypeObject(unwrappedSchema)) {
+  if (
+    !instanceofZodTypeObject(unwrappedSchema) &&
+    !instanceofZodTypeArray(unwrappedSchema)
+  ) {
     throw new TRPCError({
-      message: 'Input parser must be a ZodObject',
+      message: 'Input parser must be a ZodObject or ZodArray',
       code: 'INTERNAL_SERVER_ERROR',
     });
   }
 
-  // remove path parameters
-  const mask: Record<string, true> = {};
-  const dedupedExample = example && { ...example };
-  pathParameters.forEach((pathParameter) => {
-    mask[pathParameter] = true;
-    if (dedupedExample) {
-      delete dedupedExample[pathParameter];
-    }
-  });
-  const dedupedSchema = unwrappedSchema.omit(mask);
+  let dedupedSchema: z.ZodTypeAny;
+  let dedupedExample = example && { ...example };
 
-  // if all keys are path parameters
-  if (pathParameters.length > 0 && Object.keys(dedupedSchema.shape).length === 0) {
-    return undefined;
+  if (instanceofZodTypeObject(unwrappedSchema)) {
+    // Remove path parameters from the object schema
+    const mask: Record<string, true> = {};
+    pathParameters.forEach((pathParameter) => {
+      mask[pathParameter] = true;
+      if (dedupedExample) {
+        delete dedupedExample[pathParameter];
+      }
+    });
+    const dedupedObjectSchema = unwrappedSchema.omit(mask);
+
+    // If all keys are path parameters
+    if (
+      pathParameters.length > 0 &&
+      Object.keys(dedupedObjectSchema.shape).length === 0
+    ) {
+      return undefined;
+    }
+
+    dedupedSchema = dedupedObjectSchema;
+  } else if (instanceofZodTypeArray(unwrappedSchema)) {
+    const elementSchema = unwrappedSchema.element;
+
+    // Remove the restriction on array element types
+    let dedupedElementSchema: z.ZodTypeAny = elementSchema;
+
+    if (instanceofZodTypeObject(elementSchema)) {
+      // Remove path parameters from the element schema
+      const mask: Record<string, true> = {};
+      pathParameters.forEach((pathParameter) => {
+        mask[pathParameter] = true;
+      });
+
+      dedupedElementSchema = elementSchema.omit(mask);
+
+      // If all keys are path parameters in the element schema
+      if (
+        pathParameters.length > 0 &&
+        Object.keys((dedupedElementSchema as z.ZodObject<z.ZodRawShape>).shape).length === 0
+      ) {
+        return undefined;
+      }
+
+      // Adjust the example data for arrays of objects
+      if (dedupedExample && Array.isArray(dedupedExample)) {
+        dedupedExample = dedupedExample.map((item) => {
+          if (typeof item === 'object' && item !== null) {
+            const newItem = { ...item };
+            pathParameters.forEach((pathParameter) => {
+              delete newItem[pathParameter];
+            });
+            return newItem;
+          }
+          return item;
+        });
+      }
+    } else {
+      // For primitive types, we can't omit path parameters
+      // Proceed without modifying the element schema
+      if (pathParameters.length > 0) {
+        // If path parameters exist, and elements are primitive types,
+        // you might need to handle this case according to your needs
+      }
+    }
+
+    // Reconstruct the array schema with the deduped element schema
+    dedupedSchema = z.array(dedupedElementSchema);
+  } else {
+    throw new TRPCError({
+      message: 'Input parser must be a ZodObject or ZodArray',
+      code: 'INTERNAL_SERVER_ERROR',
+    });
   }
 
   const openApiSchemaObject = zodSchemaToOpenApiSchemaObject(dedupedSchema);

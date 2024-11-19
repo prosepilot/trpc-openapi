@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@trpc/server": "^10.27.1",
+    "@trpc/server": "^11.0.0-rc.502",
     "jsonwebtoken": "^9.0.0",
     "next": "^13.4.3",
     "nextjs-cors": "^2.1.2",

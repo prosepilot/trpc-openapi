@@ -12,7 +12,7 @@ export type CreateOpenApiFastifyPluginOptions<TRouter extends OpenApiRouter> =
     basePath?: `/${string}`;
   };
 
-export function fastifyTRPCOpenApiPlugin<TRouter extends AnyRouter>(
+export function fastifyTRPCOpenApiPlugin<TRouter extends OpenApiRouter>(
   fastify: FastifyInstance,
   opts: CreateOpenApiFastifyPluginOptions<TRouter>,
   done: (err?: Error) => void,

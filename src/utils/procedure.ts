@@ -3,6 +3,7 @@ import { ProcedureType } from '@trpc/server';
 import { AnyZodObject, z } from 'zod';
 
 import { OpenApiMeta, OpenApiProcedure, OpenApiProcedureRecord } from '../types';
+import { RouterRecord } from '@trpc/server/unstable-core-do-not-import';
 
 const mergeInputs = (inputParsers: AnyZodObject[]): AnyZodObject => {
   return inputParsers.reduce((acc, inputParser) => {
@@ -19,12 +20,7 @@ export const getInputOutputParsers = (procedure: OpenApiProcedure) => {
   };
 };
 
-const getProcedureType = (procedure: OpenApiProcedure): ProcedureType => {
-  if (procedure._def.query) return 'query';
-  if (procedure._def.mutation) return 'mutation';
-  if (procedure._def.subscription) return 'subscription';
-  throw new Error('Unknown procedure type');
-};
+const getProcedureType = (procedure: OpenApiProcedure) => procedure._def.type;
 
 export const forEachOpenApiProcedure = (
   procedureRecord: OpenApiProcedureRecord,
@@ -36,10 +32,13 @@ export const forEachOpenApiProcedure = (
   }) => void,
 ) => {
   for (const [path, procedure] of Object.entries(procedureRecord)) {
-    const { openapi } = procedure._def.meta ?? {};
+    const { openapi } = (procedure._def as RouterRecord).meta as OpenApiMeta ?? {};
     if (openapi && openapi.enabled !== false) {
-      const type = getProcedureType(procedure);
-      callback({ path, type, procedure, openapi });
+      const type = getProcedureType(procedure as unknown as OpenApiProcedure);
+
+      if(type){
+        callback({ path, type, procedure: procedure as unknown as OpenApiProcedure, openapi });
+      }
     }
   }
 };

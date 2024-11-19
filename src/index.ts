@@ -1,5 +1,4 @@
 import {
-  CreateOpenApiAwsLambdaHandlerOptions,
   CreateOpenApiExpressMiddlewareOptions,
   CreateOpenApiFastifyPluginOptions,
   CreateOpenApiHttpHandlerOptions,
@@ -18,6 +17,7 @@ import {
   openApiVersion,
 } from './generator';
 import {
+  CreateOpenApiAwsLambdaHandlerOptions,
   OpenApiErrorResponse,
   OpenApiMeta,
   OpenApiMethod,
