@@ -22,7 +22,7 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
     path: `/${string}`;
     summary?: string;
     description?: string;
-    protect?: boolean;
+    protect?: boolean | string[];
     tags?: string[];
     headers?: (OpenAPIV3.ParameterBaseObject & { name: string; in?: 'header' })[];
     contentTypes?: OpenApiContentType[];

@@ -56,6 +56,23 @@ export const getOpenApiPathsObject = (
 
       const { inputParser, outputParser } = getInputOutputParsers(procedure);
 
+      let securityNames: string[] | undefined;
+
+      if (protect) {
+        if (Array.isArray(protect)) {
+          const unexists = protect.filter((name) => !securitySchemeNames.includes(name));
+          if (unexists.length) {
+            throw new TRPCError({
+              message: `"${unexists.join(',')}" must exists in "securitySchemes"`,
+              code: 'INTERNAL_SERVER_ERROR',
+            });
+          }
+          securityNames = protect;
+        } else {
+          securityNames = securitySchemeNames;
+        }
+      }
+
       pathsObject[path] = {
         ...pathsObject[path],
         [httpMethod]: {
@@ -63,7 +80,7 @@ export const getOpenApiPathsObject = (
           summary,
           description,
           tags: tags,
-          security: protect ? securitySchemeNames.map((name) => ({ [name]: [] })) : undefined,
+          security: securityNames?.map((name) => ({ [name]: [] })),
           ...(acceptsRequestBody(method)
             ? {
                 requestBody: getRequestBodyObject(

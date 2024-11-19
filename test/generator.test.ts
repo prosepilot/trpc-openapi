@@ -849,6 +849,54 @@ describe('generator', () => {
     ]);
   });
 
+  test('with defined security', () => {
+    const appRouter = t.router({
+      protectedEndpoint: t.procedure
+        .meta({
+          openapi: { method: 'POST', path: '/secure/endpoint', protect: ['a', 'b'] },
+        })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(({ input }) => ({ name: input.name })),
+    });
+
+    const openApiDocument = generateOpenApiDocument(appRouter, {
+      ...defaultDocOpts,
+      securitySchemes: {
+        a: {
+          type: 'apiKey',
+          name: 'a',
+          in: 'header',
+        },
+        b: {
+          type: 'apiKey',
+          name: 'b',
+          in: 'header',
+        },
+      },
+    });
+
+    expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
+    expect(openApiDocument.paths['/secure/endpoint']!.post!.security).toEqual([
+      { a: [] },
+      { b: [] },
+    ]);
+  });
+
+  test('with missing securityScheme', () => {
+    const appRouter = t.router({
+      protectedEndpoint: t.procedure
+        .meta({ openapi: { method: 'POST', path: '/secure/endpoint', protect: ['a', 'b'] } })
+        .input(z.object({ name: z.string() }))
+        .output(z.object({ name: z.string() }))
+        .query(({ input }) => ({ name: input.name })),
+    });
+
+    expect(() => {
+      generateOpenApiDocument(appRouter, defaultDocOpts);
+    }).toThrowError('[query.protectedEndpoint] - "a,b" must exists in "securitySchemes"');
+  });
+
   test('with schema descriptions', () => {
     const appRouter = t.router({
       createUser: t.procedure
