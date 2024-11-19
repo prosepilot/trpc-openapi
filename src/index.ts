@@ -25,6 +25,11 @@ import {
   OpenApiRouter,
   OpenApiSuccessResponse,
 } from './types';
+import {
+  experimentalZodSchemaGenerator,
+  setZodComponentDefinitions,
+  setZodComponentSchemaGenerator,
+} from './utils/components';
 import { ZodTypeLikeString, ZodTypeLikeVoid } from './utils/zod';
 
 export {
@@ -51,4 +56,7 @@ export {
   OpenApiErrorResponse,
   ZodTypeLikeString,
   ZodTypeLikeVoid,
+  setZodComponentDefinitions,
+  setZodComponentSchemaGenerator,
+  experimentalZodSchemaGenerator,
 };

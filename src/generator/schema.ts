@@ -4,6 +4,7 @@ import { z } from 'zod';
 import zodToJsonSchema from 'zod-to-json-schema';
 
 import { OpenApiContentType } from '../types';
+import { zodComponentDefinitions } from '../utils/components';
 import {
   instanceofZodType,
   instanceofZodTypeCoercible,
@@ -15,9 +16,22 @@ import {
   zodSupportsCoerce,
 } from '../utils/zod';
 
-const zodSchemaToOpenApiSchemaObject = (zodSchema: z.ZodType): OpenAPIV3.SchemaObject => {
+export const zodSchemaToOpenApiSchemaObject = (
+  zodSchema: z.ZodType,
+  suppressObjectReferences = false,
+): OpenAPIV3.SchemaObject => {
   // FIXME: https://github.com/StefanTerdell/zod-to-json-schema/issues/35
-  return zodToJsonSchema(zodSchema, { target: 'openApi3', $refStrategy: 'none' }) as any;
+  const result = zodToJsonSchema(zodSchema, {
+    target: 'openApi3',
+    definitions:
+      zodComponentDefinitions && !suppressObjectReferences ? zodComponentDefinitions : {},
+    definitionPath: 'components/schemas',
+  }) as OpenAPIV3.SchemaObject & {
+    'components/schemas': unknown;
+  };
+
+  delete result['components/schemas'];
+  return result;
 };
 
 export const getParameterObjects = (
@@ -156,7 +170,7 @@ export const getRequestBodyObject = (
     return undefined;
   }
 
-  const openApiSchemaObject = zodSchemaToOpenApiSchemaObject(dedupedSchema);
+  const openApiSchemaObject = zodSchemaToOpenApiSchemaObject(unwrappedSchema);
   const content: OpenAPIV3.RequestBodyObject['content'] = {};
   for (const contentType of contentTypes) {
     content[contentType] = {
@@ -189,7 +203,7 @@ export const errorResponseObject: OpenAPIV3.ResponseObject = {
 export const getResponsesObject = (
   schema: unknown,
   example: Record<string, any> | undefined,
-  headers: Record<string, OpenAPIV3.HeaderObject | OpenAPIV3.ReferenceObject> | undefined
+  headers: Record<string, OpenAPIV3.HeaderObject | OpenAPIV3.ReferenceObject> | undefined,
 ): OpenAPIV3.ResponsesObject => {
   if (!instanceofZodType(schema)) {
     throw new TRPCError({
