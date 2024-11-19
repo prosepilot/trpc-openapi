@@ -1061,17 +1061,17 @@ describe('generator', () => {
       expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
       expect(openApiDocument.paths['/void']!.post!.requestBody).toMatchInlineSnapshot(`undefined`);
       expect(openApiDocument.paths['/void']!.post!.responses[200]).toMatchInlineSnapshot(`
-      Object {
-        "content": Object {
-          "application/json": Object {
-            "example": undefined,
-            "schema": Object {},
-          },
-        },
-        "description": "Successful response",
-        "headers": undefined,
-      }
-    `);
+              Object {
+                "content": Object {
+                  "application/json": Object {
+                    "example": undefined,
+                    "schema": Object {},
+                  },
+                },
+                "description": "Successful response",
+                "headers": undefined,
+              }
+          `);
     }
   });
 
@@ -1758,7 +1758,45 @@ describe('generator', () => {
 
       expect(() => {
         generateOpenApiDocument(appRouter, defaultDocOpts);
-      }).toThrowError('[query.union] - Input parser key: "payload" must be ZodString');
+      }).toThrowError(
+        '[query.union] - Input parser key: "payload" must be ZodString, ZodNumber, ZodBoolean, ZodBigInt or ZodDate',
+      );
+    }
+    {
+      const appRouter = t.router({
+        union: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/union' } })
+          .input(z.object({ payload: z.union([z.string(), z.number()]) }))
+          .output(z.string())
+          .query(({ input }) => {
+            return typeof input.payload === 'number' ? String(input.payload) : input.payload;
+          }),
+      });
+
+      const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+      expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
+      expect(openApiDocument.paths['/union']!.get!.parameters).toMatchInlineSnapshot(`
+        Array [
+          Object {
+            "description": undefined,
+            "example": undefined,
+            "in": "query",
+            "name": "payload",
+            "required": true,
+            "schema": Object {
+              "anyOf": Array [
+                Object {
+                  "type": "string",
+                },
+                Object {
+                  "type": "number",
+                },
+              ],
+            },
+          },
+        ]
+      `);
     }
     {
       const appRouter = t.router({
@@ -1800,71 +1838,114 @@ describe('generator', () => {
   });
 
   test('with intersection', () => {
-    const appRouter = t.router({
-      intersection: t.procedure
-        .meta({ openapi: { method: 'GET', path: '/intersection' } })
-        .input(
-          z.object({
-            payload: z.intersection(
-              z.union([z.literal('a'), z.literal('b')]),
-              z.union([z.literal('b'), z.literal('c')]),
-            ),
-          }),
-        )
-        .output(z.null())
-        .query(() => null),
-    });
+    {
+      const appRouter = t.router({
+        intersection: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/intersection' } })
+          .input(
+            z.object({
+              payload: z.intersection(z.literal('a'), z.object({ b: z.literal('b') })),
+            }),
+          )
+          .output(z.null())
+          .query(() => null),
+      });
 
-    const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+      expect(() => {
+        generateOpenApiDocument(appRouter, defaultDocOpts);
+      }).toThrowError(
+        '[query.intersection] - Input parser key: "payload" must be ZodString, ZodNumber, ZodBoolean, ZodBigInt or ZodDate',
+      );
+    }
+    {
+      const appRouter = t.router({
+        intersection: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/intersection' } })
+          .input(
+            z.object({
+              payload: z.intersection(
+                z.object({ a: z.literal('a') }),
+                z.object({ b: z.literal('b') }),
+              ),
+            }),
+          )
+          .output(z.null())
+          .query(() => null),
+      });
 
-    expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
-    expect(openApiDocument.paths['/intersection']!.get!.parameters).toMatchInlineSnapshot(`
-      Array [
-        Object {
-          "description": undefined,
-          "example": undefined,
-          "in": "query",
-          "name": "payload",
-          "required": true,
-          "schema": Object {
-            "allOf": Array [
-              Object {
-                "anyOf": Array [
-                  Object {
-                    "enum": Array [
-                      "a",
+      expect(() => {
+        generateOpenApiDocument(appRouter, defaultDocOpts);
+      }).toThrowError(
+        '[query.intersection] - Input parser key: "payload" must be ZodString, ZodNumber, ZodBoolean, ZodBigInt or ZodDate',
+      );
+    }
+    {
+      const appRouter = t.router({
+        intersection: t.procedure
+          .meta({ openapi: { method: 'GET', path: '/intersection' } })
+          .input(
+            z.object({
+              payload: z.intersection(
+                z.union([z.literal('a'), z.literal('b')]),
+                z.union([z.literal('b'), z.literal('c')]),
+              ),
+            }),
+          )
+          .output(z.null())
+          .query(() => null),
+      });
+
+      const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);
+
+      expect(openApiSchemaValidator.validate(openApiDocument).errors).toEqual([]);
+      expect(openApiDocument.paths['/intersection']!.get!.parameters).toMatchInlineSnapshot(`
+              Array [
+                Object {
+                  "description": undefined,
+                  "example": undefined,
+                  "in": "query",
+                  "name": "payload",
+                  "required": true,
+                  "schema": Object {
+                    "allOf": Array [
+                      Object {
+                        "anyOf": Array [
+                          Object {
+                            "enum": Array [
+                              "a",
+                            ],
+                            "type": "string",
+                          },
+                          Object {
+                            "enum": Array [
+                              "b",
+                            ],
+                            "type": "string",
+                          },
+                        ],
+                      },
+                      Object {
+                        "anyOf": Array [
+                          Object {
+                            "enum": Array [
+                              "b",
+                            ],
+                            "type": "string",
+                          },
+                          Object {
+                            "enum": Array [
+                              "c",
+                            ],
+                            "type": "string",
+                          },
+                        ],
+                      },
                     ],
-                    "type": "string",
                   },
-                  Object {
-                    "enum": Array [
-                      "b",
-                    ],
-                    "type": "string",
-                  },
-                ],
-              },
-              Object {
-                "anyOf": Array [
-                  Object {
-                    "enum": Array [
-                      "b",
-                    ],
-                    "type": "string",
-                  },
-                  Object {
-                    "enum": Array [
-                      "c",
-                    ],
-                    "type": "string",
-                  },
-                ],
-              },
-            ],
-          },
-        },
-      ]
-    `);
+                },
+              ]
+          `);
+    }
   });
 
   test('with lazy', () => {
@@ -2807,26 +2888,26 @@ describe('generator', () => {
             method: 'GET',
             path: '/query-example/{name}',
             responseHeaders: {
-              "X-RateLimit-Limit": {
-                description: "Request limit per hour.",
+              'X-RateLimit-Limit': {
+                description: 'Request limit per hour.',
                 schema: {
-                  type: "integer"
-                }
+                  type: 'integer',
+                },
               },
-              "X-RateLimit-Remaining": {
-                description: "The number of requests left for the time window.",
+              'X-RateLimit-Remaining': {
+                description: 'The number of requests left for the time window.',
                 schema: {
-                  type: "integer"
-                }
-              }
-            }
+                  type: 'integer',
+                },
+              },
+            },
           },
         })
         .input(z.object({ name: z.string(), greeting: z.string() }))
         .output(z.object({ output: z.string() }))
         .query(({ input }) => ({
           output: `${input.greeting} ${input.name}`,
-        }))
+        })),
     });
 
     const openApiDocument = generateOpenApiDocument(appRouter, defaultDocOpts);

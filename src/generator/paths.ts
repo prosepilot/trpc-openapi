@@ -94,7 +94,11 @@ export const getOpenApiPathsObject = (
                   ) || []),
                 ],
               }),
-          responses: getResponsesObject(outputParser, openapi.example?.response, openapi.responseHeaders),
+          responses: getResponsesObject(
+            outputParser,
+            openapi.example?.response,
+            openapi.responseHeaders,
+          ),
           ...(openapi.deprecated ? { deprecated: openapi.deprecated } : {}),
         },
       };

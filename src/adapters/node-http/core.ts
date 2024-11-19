@@ -20,6 +20,7 @@ import { normalizePath } from '../../utils/path';
 import { getInputOutputParsers } from '../../utils/procedure';
 import {
   instanceofZodTypeCoercible,
+  instanceofZodTypeKind,
   instanceofZodTypeLikeVoid,
   instanceofZodTypeObject,
   unwrapZodType,
@@ -118,7 +119,14 @@ export const createOpenApiNodeHttpHandler = <
         if (instanceofZodTypeObject(unwrappedSchema)) {
           Object.values(unwrappedSchema.shape).forEach((shapeSchema) => {
             const unwrappedShapeSchema = unwrapZodType(shapeSchema, false);
-            if (instanceofZodTypeCoercible(unwrappedShapeSchema)) {
+
+            if (instanceofZodTypeKind(unwrappedShapeSchema, z.ZodFirstPartyTypeKind.ZodUnion)) {
+              unwrappedShapeSchema.options.forEach((option) => {
+                if (instanceofZodTypeCoercible(option)) {
+                  option._def.coerce = true;
+                }
+              });
+            } else if (instanceofZodTypeCoercible(unwrappedShapeSchema)) {
               unwrappedShapeSchema._def.coerce = true;
             }
           });

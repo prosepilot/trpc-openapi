@@ -1194,6 +1194,7 @@ describe('standalone adapter', () => {
     // @ts-expect-error - hack to disable zodSupportsCoerce
     // eslint-disable-next-line import/namespace
     zodUtils.zodSupportsCoerce = false;
+
     {
       const appRouter = t.router({
         plusOne: t.procedure
@@ -1225,6 +1226,7 @@ describe('standalone adapter', () => {
 
       close();
     }
+
     // @ts-expect-error - hack to re-enable zodSupportsCoerce
     // eslint-disable-next-line import/namespace
     zodUtils.zodSupportsCoerce = true;
