@@ -20,7 +20,7 @@
   <hr />
 </div>
 
-#### `trpc-openapi` is maintained by ProsePilot - simple, fast and free online [writing tools](https://www.prosepilot.com/tools).
+#### `trpc-openapi` is maintained by [ProsePilot](https://www.prosepilot.com) - simple, fast and free online writing tools.
 
 ---
 
