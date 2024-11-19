@@ -7,6 +7,7 @@
  */
 import cors from '@fastify/cors';
 import fastifySwagger from '@fastify/swagger';
+import fastifySwaggerUi from '@fastify/swagger-ui';
 import { fastifyTRPCPlugin } from '@trpc/server/adapters/fastify';
 import Fastify from 'fastify';
 import { fastifyTRPCOpenApiPlugin } from 'trpc-openapi';
@@ -39,18 +40,23 @@ async function main() {
 
   // Server Swagger UI
   await app.register(fastifySwagger, {
-    routePrefix: '/docs',
+    prefix: '/docs',
     mode: 'static',
     specification: { document: openApiDocument },
+  });
+
+  await app.register(fastifySwaggerUi, {
+    routePrefix: '/documentation',
     uiConfig: { displayOperationId: true },
-    exposeRoute: true,
   });
 
   await app
     .listen({ port: 3000 })
     .then((address) => {
       app.swagger();
-      console.log(`Server started on ${address}\nSwagger UI: http://localhost:3000/docs`);
+      console.log(
+        `Server started on ${address}\nSwagger UI: http://localhost:3000/documentation/static/index.html`,
+      );
     })
     .catch((e) => {
       throw e;
