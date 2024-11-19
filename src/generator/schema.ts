@@ -17,7 +17,7 @@ import {
 
 const zodSchemaToOpenApiSchemaObject = (zodSchema: z.ZodType): OpenAPIV3.SchemaObject => {
   // FIXME: https://github.com/StefanTerdell/zod-to-json-schema/issues/35
-  return zodToJsonSchema(zodSchema, { target: 'openApi3', $refStrategy: 'none' }) as any;
+  return zodToJsonSchema(zodSchema, { target: 'openApi3', $refStrategy: 'none', pipeStrategy: 'output' }) as any;
 };
 
 export const getParameterObjects = (
