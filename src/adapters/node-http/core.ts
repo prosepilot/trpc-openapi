@@ -70,7 +70,7 @@ export const createOpenApiNodeHttpHandler = <
           res.setHeader(key, value);
         }
       }
-      res.end(JSON.stringify(body));
+      return res.end(JSON.stringify(body));
     };
 
     const method = req.method! as OpenApiMethod & 'HEAD';
@@ -91,8 +91,7 @@ export const createOpenApiNodeHttpHandler = <
 
         // Can be used for warmup
         if (method === 'HEAD') {
-          sendResponse(204, {}, undefined);
-          return;
+          return sendResponse(204, {}, undefined);
         }
 
         throw new TRPCError({
@@ -144,7 +143,7 @@ export const createOpenApiNodeHttpHandler = <
       const statusCode = meta?.status ?? 200;
       const headers = meta?.headers ?? {};
       const body: OpenApiSuccessResponse<typeof data> = data;
-      sendResponse(statusCode, headers, body);
+      return sendResponse(statusCode, headers, body);
     } catch (cause) {
       const error = getErrorFromUnknown(cause);
 
@@ -187,7 +186,7 @@ export const createOpenApiNodeHttpHandler = <
         code: error.code,
         issues: isInputValidationError ? (error.cause as ZodError).errors : undefined,
       };
-      sendResponse(statusCode, headers, body);
+      return sendResponse(statusCode, headers, body);
     }
   };
 };
