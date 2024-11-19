@@ -18,6 +18,7 @@
   "workspaces": [
     ".",
     "examples/with-nextjs",
+    "examples/with-nextjs-appdir",
     "examples/with-express",
     "examples/with-interop",
     "examples/with-serverless",
