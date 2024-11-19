@@ -1,4 +1,4 @@
-import { Procedure, ProcedureParams, Router } from '@trpc/server';
+import { Procedure, ProcedureParams, ProcedureType, Router } from '@trpc/server';
 import type { RootConfig } from '@trpc/server/dist/core/internals/config';
 import { TRPC_ERROR_CODE_KEY } from '@trpc/server/rpc';
 import type { RouterDef } from '@trpc/server/src/core/router';
@@ -37,7 +37,7 @@ export type OpenApiMeta<TMeta = TRPCMeta> = TMeta & {
 
 export type OpenApiProcedure<TMeta = TRPCMeta> = Procedure<
   'query' | 'mutation',
-  ProcedureParams<
+  { type: ProcedureType } & ProcedureParams<
     RootConfig<{
       transformer: any;
       errorShape: any;
